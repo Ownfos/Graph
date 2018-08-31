@@ -1,3 +1,7 @@
-int main() {
+#include "operator.h"
 
+using namespace graph;
+
+int main() {
+	Variable v;
 }
