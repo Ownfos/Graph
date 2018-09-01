@@ -158,26 +158,31 @@ namespace graph {
 	Value(1) || Multiply(a,b) = new Add(Value(1), Multiply(a,b))
 	*/
 	NodePtr operator||(NodePtr node1, NodePtr node2) {
-		Add* add1 = dynamic_cast<Add*>(node1.node);
-		Add* add2 = dynamic_cast<Add*>(node2.node);
-
-		if (add1 == nullptr) {
-			if (add2 == nullptr) {
-				return (node1 + node2);
-			}
-			else {
-				add2->mergeSource(add1);
-				return add2;
-			}
+		if (node1.node == node2.node) {
+			return node1 + node2;
 		}
 		else {
-			if (add2 == nullptr) {
-				add1->connect(node2.node);
+			Add* add1 = dynamic_cast<Add*>(node1.node);
+			Add* add2 = dynamic_cast<Add*>(node2.node);
+
+			if (add1 == nullptr) {
+				if (add2 == nullptr) {
+					return (node1 + node2);
+				}
+				else {
+					add2->mergeSource(add1);
+					return add2;
+				}
 			}
 			else {
-				add1->mergeSource(add2);
+				if (add2 == nullptr) {
+					add1->connect(node2.node);
+				}
+				else {
+					add1->mergeSource(add2);
+				}
+				return add2;
 			}
-			return add2;
 		}
 	}
 
@@ -190,26 +195,31 @@ namespace graph {
 			Multiply(a,b,c) && Add(d,e,f) = Multiply(a,b,c,Add(d,e,f))
 	*/
 	NodePtr operator&&(NodePtr node1, NodePtr node2) {
-		Multiply* multiply1 = dynamic_cast<Multiply*>(node1.node);
-		Multiply* multiply2 = dynamic_cast<Multiply*>(node2.node);
-
-		if (multiply1 == nullptr) {
-			if (multiply2 == nullptr) {
-				return (node1 * node2);
-			}
-			else {
-				multiply2->mergeSource(multiply1);
-				return multiply2;
-			}
+		if (node1.node == node2.node) {
+			return node1 * node2;
 		}
 		else {
-			if (multiply2 == nullptr) {
-				multiply1->connect(node2.node);
+			Multiply* multiply1 = dynamic_cast<Multiply*>(node1.node);
+			Multiply* multiply2 = dynamic_cast<Multiply*>(node2.node);
+
+			if (multiply1 == nullptr) {
+				if (multiply2 == nullptr) {
+					return (node1 * node2);
+				}
+				else {
+					multiply2->mergeSource(multiply1);
+					return multiply2;
+				}
 			}
 			else {
-				multiply1->mergeSource(multiply2);
+				if (multiply2 == nullptr) {
+					multiply1->connect(node2.node);
+				}
+				else {
+					multiply1->mergeSource(multiply2);
+				}
+				return multiply2;
 			}
-			return multiply2;
 		}
 	}
 }
