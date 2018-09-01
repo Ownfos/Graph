@@ -4,19 +4,31 @@
 
 namespace graph {
 
-	class Variable : public Node {
+	class Value : public IndependentNode {
 	public:
-		Variable(double value);
-
-		virtual void clearValue() override;
-		virtual double getValue(bool reuse) override;
-		virtual double getPartialDerivative(Node* node) override;
+		Value(double value);
 	};
 
-	class Add : public Node {
+	class Reference : public IndependentNode {
+	private:
+		double& reference;
+
+	public:
+		Reference(double& reference);
+
+		virtual double getValue(bool reuse) override;
+	};
+
+	class Add : public DependentNode {
 	public:
 		virtual double getValue(bool reuse) override;
-		virtual double getPartialDerivative(Node* node) override;
+		virtual double getPartialDerivative(Node* node, bool reuse) override;
+	};
+
+	class Multiply : public DependentNode {
+	public:
+		virtual double getValue(bool reuse) override;
+		virtual double getPartialDerivative(Node* node, bool reuse) override;
 	};
 
 }

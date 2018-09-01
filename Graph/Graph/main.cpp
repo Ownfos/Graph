@@ -3,5 +3,5 @@
 using namespace graph;
 
 int main() {
-	Variable v;
+
 }

@@ -5,34 +5,18 @@ namespace graph {
 
 	std::vector<Node*> Node::list;
 
+	/*
+		Keeps pointer of every Node instance created
+		This list is used on clear() to reset 'value' and 'derivative' of all nodes
+	*/
 	Node::Node() : value(UNDEFINED) {
 		list.push_back(this);
 	}
 
-	// Destination should not be overlapped since getDerivativePartial handles that
-	void Node::addDestination(Node* node) {
-		if (std::find(destination.begin(), destination.end(), node) == destination.end()) {
-			destination.push_back(node);
-			derivative[node] = UNDEFINED;
-		}
-	}
-
-	void Node::removeDestination(Node* node) {
-		destination.erase(std::find(destination.begin(), destination.end(), node));
-	}
-
-	// automatically adds destination too
-	void Node::addSource(Node* node) {
-		source.push_back(node);
-		node->addDestination(this);
-	}
-
-	// automatically removes destination too
-	void Node::removeSource(Node* node) {
-		source.erase(std::find(source.begin(), source.end(), node));
-		node->removeDestination(this);
-	}
-
+	/*
+		Differentiate node with respect to this node and return the derivative using chain rule
+		The first part of this function handles differentiating with respect to itself
+	*/
 	double Node::getTotalDerivative(Node* node, bool reuse) {
 		if (node == this) {
 			return 1;
@@ -41,21 +25,17 @@ namespace graph {
 			if (!reuse || derivative[node] == UNDEFINED) {
 				derivative[node] = 0;
 				for (Node* node : destination) {
-					derivative[node] += node->getTotalDerivative(node, reuse) * node->getPartialDerivative(this);
+					derivative[node] += node->getTotalDerivative(node, reuse) * node->getPartialDerivative(this, reuse);
 				}
 			}
 			return derivative[node];
 		}
 	}
 
-	// Clears previously calculated value
-	// Non-function nodes(Variable, Constant, Placeholder) must override this and leave it empty
-	void Node::clearValue() {
-		value = UNDEFINED;
-	}
-
-	// Clears all previously calculated ones(value, derivative)
-	// Use this method when any value change occurs on calculation graph(assigning different value to Placeholder, updating value of Variable)
+	/*
+		Clears all previously calculated ones(value, derivative)
+		Use this method when any value change occurs on calculation graph(assigning different value to Placeholder, updating value of Variable)
+	*/
 	void Node::clear() {
 		for (Node* node : list) {
 			node->clearValue();
@@ -65,30 +45,154 @@ namespace graph {
 		}
 	}
 
+
+	void IndependentNode::clearValue() {
+		// Do nothing
+	}
+
+	double IndependentNode::getValue(bool reuse) {
+		return value;
+	}
+
+	double IndependentNode::getPartialDerivative(Node* node, bool reuse) {
+		return (node == this);
+	}
+
+
+	void DependentNode::clearValue() {
+		value = UNDEFINED;
+	}
+
+	void DependentNode::connect(Node* other) {
+		// Add source
+		source.push_back(other);
+
+		// Add destination
+		if (std::find(destination.begin(), destination.end(), other) == destination.end()) {
+			destination.push_back(other);
+			derivative[other] = UNDEFINED;
+		}
+	}
+
+	void DependentNode::disconnect(Node* other) {
+		// Remove source
+		source.erase(std::find(source.begin(), source.end(), other));
+
+		// Remove destination
+		std::map<Node*, double>::iterator position;
+		if (derivative.find(other) != derivative.end()) {
+			destination.erase(std::find(destination.begin(), destination.end(), other));
+			derivative.erase(derivative.find(other));
+		}
+	}
+
+	/*
+		Merges the source of 'other' to 'this' and delete 'other'
+		Note that previously created nodes using 'other' as source can be seriouly affected
+	*/
+	void DependentNode::mergeSource(DependentNode* other) {
+		for (Node* input : other->source) {
+			connect(input);
+			other->disconnect(input);
+		}
+		delete other;
+	}
+
+
 	NodePtr::NodePtr(Node* node) : node(node) {
 
 	}
 
-	NodePtr NodePtr::operator+(NodePtr nodePtr) {
-		bool isAdd = dynamic_cast<Add*>(node);
-		bool isAddOther = dynamic_cast<Add*>(nodePtr.node);
-		if (!isAdd && !isAddOther) {
-			Add* rtn = new Add();
-			rtn->addSource(node);
-			rtn->addSource(nodePtr.node);
-		}
-		else if (isAdd && !isAddOther) {
-			node->addSource(nodePtr.node);
-			return *this;
-		}
-		else if (!isAdd && isAddOther) {
-			nodePtr.node->addSource(node);
-			return nodePtr;
-		}
-		else if (isAdd && isAddOther) {
-			// Merge two Add node
+	/*
+		Creates a new Add node with two input
 
+		Examples :
+			Add(a,b,c) + Multiply(d,e,f) = Add(Add(a,b,c), Multiply(d,e,f))
+			Value(1) + Add(a,b) = Add(Value(1), Add(a,b)
+	 */
+	NodePtr NodePtr::operator+(NodePtr other) {
+		Add* rtn = new Add();
+		rtn->connect(node);
+		rtn->connect(other.node);
+		return rtn;// Implicit typecasting occurs
+	}
+
+	/*
+		Creates a new Multiply node with two input
+
+		Examples :
+			Add(a,b,c) * Multiply(d,e,f) = new Multiply(n1(a,b,c), n2(d,e,f))
+			Value(1) + Add(a,b) = new Multiply(Value(1), Add(a,b))
+	*/
+	NodePtr NodePtr::operator*(NodePtr other) {
+		Multiply* rtn = new Multiply();
+		rtn->connect(node);
+		rtn->connect(other.node);
+		return rtn;// Implicit typecasting occurs
+	}
+
+	/*
+	Merges two node as one Add node
+	Note that new Add will not be created unless both are not Add
+
+	Examples :
+	Add(a,b,c) || Add(d,e,f) = Add(a,b,c,d,e,f)	//the latter Add(d,e,f) will be destroyed
+	Add(a,b,c) || Multiply(d,e,f) = Add(a,b,c,Multiply(d,e,f))
+	Value(1) || Multiply(a,b) = new Add(Value(1), Multiply(a,b))
+	*/
+	NodePtr operator||(NodePtr node1, NodePtr node2) {
+		Add* add1 = dynamic_cast<Add*>(node1.node);
+		Add* add2 = dynamic_cast<Add*>(node2.node);
+
+		if (add1 == nullptr) {
+			if (add2 == nullptr) {
+				return (node1 + node2);
+			}
+			else {
+				add2->mergeSource(add1);
+				return add2;
+			}
+		}
+		else {
+			if (add2 == nullptr) {
+				add1->connect(node2.node);
+			}
+			else {
+				add1->mergeSource(add2);
+			}
+			return add2;
 		}
 	}
 
+	/*
+		Merges two node as one Multiply node
+		Note that new Multiply will not be created unless both are not Multiply
+
+		Examples :
+			Multiply(a,b,c) && Multiply(d,e,f) = Multiply(a,b,c,d,e,f)	//the latter Multiply(d,e,f) will be destroyed
+			Multiply(a,b,c) && Add(d,e,f) = Multiply(a,b,c,Add(d,e,f))
+	*/
+	NodePtr operator&&(NodePtr node1, NodePtr node2) {
+		Multiply* multiply1 = dynamic_cast<Multiply*>(node1.node);
+		Multiply* multiply2 = dynamic_cast<Multiply*>(node2.node);
+
+		if (multiply1 == nullptr) {
+			if (multiply2 == nullptr) {
+				return (node1 * node2);
+			}
+			else {
+				multiply2->mergeSource(multiply1);
+				return multiply2;
+			}
+		}
+		else {
+			if (multiply2 == nullptr) {
+				multiply1->connect(node2.node);
+			}
+			else {
+				multiply1->mergeSource(multiply2);
+			}
+			return multiply2;
+		}
+	}
 }

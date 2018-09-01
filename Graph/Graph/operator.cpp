@@ -2,20 +2,17 @@
 
 namespace graph {
 
-	Variable::Variable(double value) {
+	Value::Value(double value) {
 		this->value = value;
 	}
 
-	void Variable::clearValue() {
+
+	Reference::Reference(double& reference) : reference(reference) {
 
 	}
 
-	double Variable::getValue(bool reuse) {
-		return value;
-	}
-
-	double Variable::getPartialDerivative(Node* node) {
-		return (node == this);
+	double Reference::getValue(bool reuse) {
+		return reference;
 	}
 
 
@@ -29,7 +26,7 @@ namespace graph {
 		return value;
 	}
 
-	double Add::getPartialDerivative(Node* node) {
+	double Add::getPartialDerivative(Node* node, bool reuse) {
 		if (node == this) {
 			return 1;
 		}
@@ -37,6 +34,31 @@ namespace graph {
 			int rtn = 0;
 			for (Node* input : source) {
 				rtn += (input == node);
+			}
+			return rtn;
+		}
+	}
+
+
+	double Multiply::getValue(bool reuse) {
+		if (!reuse || value == UNDEFINED) {
+			value = 1;
+			for (Node* node : source) {
+				value *= node->getValue(reuse);
+			}
+		}
+		return value;
+	}
+
+	double Multiply::getPartialDerivative(Node* node, bool reuse) {
+		if (node == this) {
+			return 1;
+		}
+		else {
+			int rtn = 0;
+			int value = getValue(reuse);
+			for (Node* input : source) {
+				rtn += (input == node) * value / input->getValue(reuse);
 			}
 			return rtn;
 		}

@@ -11,27 +11,42 @@ namespace graph {
 	class Node {
 	protected:
 		double value;
-		std::vector<Node*> source;// Input nodes
-		std::vector<Node*> destination;// Output nodes
+		std::vector<Node*> destination;// Other nodes which use this node as their input
 		std::map<Node*, double> derivative;// Saves differentiated value for reuse
 
 		static std::vector<Node*> list;// All Node instances created
 
-		void addDestination(Node* node);
-		void removeDestination(Node* node);
-
 	public:
 		Node();
 
-		void addSource(Node* node);
-		void removeSource(Node* node);
 		double getTotalDerivative(Node* node, bool reuse);
 
-		virtual void clearValue();
+		virtual void clearValue() = 0;
 		virtual double getValue(bool reuse) = 0;
-		virtual double getPartialDerivative(Node* node) = 0;
+		virtual double getPartialDerivative(Node* node, bool reuse) = 0;
 
 		static void clear();
+	};
+
+	// Nodes which do not require other nodes for value calculation
+	class IndependentNode : public Node {
+	public:
+		virtual void clearValue() override;
+		virtual double getValue(bool reuse) override;
+		virtual double getPartialDerivative(Node* node, bool reuse) override;
+	};
+
+	// Nodes which require other nodes for value calculation
+	class DependentNode : public Node {
+	protected:
+		std::vector<Node*> source;// Other nodes which are used as input
+
+	public:
+		void connect(Node* other);
+		void disconnect(Node* other);
+		void mergeSource(DependentNode* other);
+
+		virtual void clearValue() override;
 	};
 
 	// Wrapper class of Node pointer
@@ -42,7 +57,10 @@ namespace graph {
 	public:
 		NodePtr(Node* node);
 
-		NodePtr operator+(NodePtr);
+		NodePtr operator+(NodePtr other);
+		NodePtr operator*(NodePtr other);
+		friend NodePtr operator||(NodePtr node1, NodePtr node2);
+		friend NodePtr operator&&(NodePtr node1, NodePtr node2);
 	};
 
 }
