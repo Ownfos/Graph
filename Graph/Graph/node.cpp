@@ -14,16 +14,16 @@ namespace graph {
 	}
 
 	void Node::addDestination(Node* other) {
-		if (std::find(destination.begin(), destination.end(), other) == destination.end()) {
-			destination.push_back(other);
-			derivative[other] = UNDEFINED;
+		if (std::find(other->destination.begin(), other->destination.end(), this) == other->destination.end()) {
+			other->destination.push_back(this);
+			other->derivative[this] = UNDEFINED;
 		}
 	}
 
 	void Node::removeDestination(Node* other) {
-		if (std::find(destination.begin(), destination.end(), other) != destination.end()) {
-			destination.erase(std::find(destination.begin(), destination.end(), other));
-			derivative.erase(derivative.find(other));
+		if (std::find(other->destination.begin(), other->destination.end(), this) != other->destination.end()) {
+			other->destination.erase(std::find(other->destination.begin(), other->destination.end(), this));
+			other->derivative.erase(derivative.find(this));
 		}
 	}
 
@@ -87,12 +87,12 @@ namespace graph {
 
 	void DependentNode::connect(Node* other) {
 		addSource(other);
-		other->addDestination(this);
+		addDestination(other);
 	}
 
 	void DependentNode::disconnect(Node* other) {
 		removeSource(other);
-		other->removeDestination(this);
+		removeDestination(other);
 	}
 
 	/*
