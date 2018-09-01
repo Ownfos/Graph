@@ -13,6 +13,20 @@ namespace graph {
 		list.push_back(this);
 	}
 
+	void Node::addDestination(Node* other) {
+		if (std::find(destination.begin(), destination.end(), other) == destination.end()) {
+			destination.push_back(other);
+			derivative[other] = UNDEFINED;
+		}
+	}
+
+	void Node::removeDestination(Node* other) {
+		if (std::find(destination.begin(), destination.end(), other) != destination.end()) {
+			destination.erase(std::find(destination.begin(), destination.end(), other));
+			derivative.erase(derivative.find(other));
+		}
+	}
+
 	/*
 		Differentiate node with respect to this node and return the derivative using chain rule
 		The first part of this function handles differentiating with respect to itself
@@ -63,27 +77,22 @@ namespace graph {
 		value = UNDEFINED;
 	}
 
-	void DependentNode::connect(Node* other) {
-		// Add source
+	void DependentNode::addSource(Node* other) {
 		source.push_back(other);
+	}
 
-		// Add destination
-		if (std::find(destination.begin(), destination.end(), other) == destination.end()) {
-			destination.push_back(other);
-			derivative[other] = UNDEFINED;
-		}
+	void DependentNode::removeSource(Node* other) {
+		source.erase(std::find(source.begin(), source.end(), other));
+	}
+
+	void DependentNode::connect(Node* other) {
+		addSource(other);
+		other->addDestination(this);
 	}
 
 	void DependentNode::disconnect(Node* other) {
-		// Remove source
-		source.erase(std::find(source.begin(), source.end(), other));
-
-		// Remove destination
-		std::map<Node*, double>::iterator position;
-		if (derivative.find(other) != derivative.end()) {
-			destination.erase(std::find(destination.begin(), destination.end(), other));
-			derivative.erase(derivative.find(other));
-		}
+		removeSource(other);
+		other->removeDestination(this);
 	}
 
 	/*
@@ -101,6 +110,14 @@ namespace graph {
 
 	NodePtr::NodePtr(Node* node) : node(node) {
 
+	}
+
+	double NodePtr::getValue(bool reuse) {
+		return node->getValue(reuse);
+	}
+
+	double NodePtr::getDerivative(NodePtr other, bool reuse) {
+		return node->getTotalDerivative(other.node, reuse);
 	}
 
 	/*

@@ -16,6 +16,9 @@ namespace graph {
 
 		static std::vector<Node*> list;// All Node instances created
 
+		void addDestination(Node* other);
+		void removeDestination(Node* other);
+
 	public:
 		Node();
 
@@ -41,6 +44,9 @@ namespace graph {
 	protected:
 		std::vector<Node*> source;// Other nodes which are used as input
 
+		void addSource(Node* other);
+		void removeSource(Node* other);
+
 	public:
 		void connect(Node* other);
 		void disconnect(Node* other);
@@ -56,6 +62,9 @@ namespace graph {
 
 	public:
 		NodePtr(Node* node);
+
+		double getValue(bool reuse);
+		double getDerivative(NodePtr other, bool reuse);
 
 		NodePtr operator+(NodePtr other);
 		NodePtr operator*(NodePtr other);
