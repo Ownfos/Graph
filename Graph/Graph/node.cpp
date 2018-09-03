@@ -23,7 +23,7 @@ namespace graph {
 	void Node::removeDestination(Node* other) {
 		if (std::find(other->destination.begin(), other->destination.end(), this) != other->destination.end()) {
 			other->destination.erase(std::find(other->destination.begin(), other->destination.end(), this));
-			other->derivative.erase(derivative.find(this));
+			other->derivative.erase(other->derivative.find(this));
 		}
 	}
 
@@ -38,8 +38,8 @@ namespace graph {
 		else {
 			if (!reuse || derivative[node] == UNDEFINED) {
 				derivative[node] = 0;
-				for (Node* node : destination) {
-					derivative[node] += node->getTotalDerivative(node, reuse) * node->getPartialDerivative(this, reuse);
+				for (Node* output : destination) {
+					derivative[node] += output->getTotalDerivative(node, reuse) * output->getPartialDerivative(this, reuse);
 				}
 			}
 			return derivative[node];
@@ -170,7 +170,7 @@ namespace graph {
 					return (node1 + node2);
 				}
 				else {
-					add2->mergeSource(add1);
+					add2->connect(node2.node);
 					return add2;
 				}
 			}
@@ -181,7 +181,7 @@ namespace graph {
 				else {
 					add1->mergeSource(add2);
 				}
-				return add2;
+				return add1;
 			}
 		}
 	}
@@ -207,7 +207,7 @@ namespace graph {
 					return (node1 * node2);
 				}
 				else {
-					multiply2->mergeSource(multiply1);
+					multiply2->connect(node1.node);
 					return multiply2;
 				}
 			}
@@ -218,7 +218,7 @@ namespace graph {
 				else {
 					multiply1->mergeSource(multiply2);
 				}
-				return multiply2;
+				return multiply1;
 			}
 		}
 	}
